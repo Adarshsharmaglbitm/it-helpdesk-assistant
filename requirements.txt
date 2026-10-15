@@ -1,0 +1,12 @@
+langchain-core>=0.3
+langchain-community>=0.3
+langchain-text-splitters>=0.3
+langchain-huggingface>=0.1
+langchain-ollama>=0.2
+langchain-openai>=0.2
+sentence-transformers>=3.0
+faiss-cpu>=1.8
+rank-bm25>=0.2.2
+streamlit>=1.38
+python-dotenv>=1.0
+pytest>=8.0

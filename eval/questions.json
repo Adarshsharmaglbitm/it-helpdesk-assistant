@@ -1,0 +1,64 @@
+[
+  {"question": "The VPN client says gateway unreachable when I'm at a hotel", "expected_source": "vpn_setup.md"},
+  {"question": "I can connect remotely but the intranet pages won't open", "expected_source": "vpn_setup.md"},
+  {"question": "Why does my remote connection drop every day after 12 hours?", "expected_source": "vpn_setup.md"},
+  {"question": "Can I use my own personal laptop to access internal systems from home?", "expected_source": "vpn_setup.md"},
+
+  {"question": "How many characters does my new password need?", "expected_source": "password_reset.md"},
+  {"question": "My account got locked after typing the wrong password several times", "expected_source": "password_reset.md"},
+  {"question": "How often do I have to change my password?", "expected_source": "password_reset.md"},
+  {"question": "I keep getting locked out even after changing my password", "expected_source": "password_reset.md"},
+
+  {"question": "How do I set up the authenticator app for sign-in verification?", "expected_source": "mfa_setup.md"},
+  {"question": "I bought a new smartphone, how do I move my two-factor login to it?", "expected_source": "mfa_setup.md"},
+  {"question": "I got a login approval notification I didn't request", "expected_source": "mfa_setup.md"},
+
+  {"question": "Outlook isn't getting any new messages", "expected_source": "email_outlook.md"},
+  {"question": "I can't send emails because my inbox storage is full", "expected_source": "email_outlook.md"},
+  {"question": "How do I get access to my team's shared inbox?", "expected_source": "email_outlook.md"},
+  {"question": "How do I set an automatic reply while I'm on vacation?", "expected_source": "email_outlook.md"},
+
+  {"question": "How do I collect my print job from the printer?", "expected_source": "printer_setup.md"},
+  {"question": "How do I add the office printer on my Mac?", "expected_source": "printer_setup.md"},
+  {"question": "The printer doesn't recognize my ID card", "expected_source": "printer_setup.md"},
+
+  {"question": "My computer is running really slowly, what can I do?", "expected_source": "slow_laptop.md"},
+  {"question": "Why is my machine sluggish every Wednesday around lunch?", "expected_source": "slow_laptop.md"},
+  {"question": "How do I see which program is eating up my CPU?", "expected_source": "slow_laptop.md"},
+
+  {"question": "My work laptop won't join the secure office wireless network", "expected_source": "wifi_access.md"},
+  {"question": "A visitor needs internet access in the office", "expected_source": "wifi_access.md"},
+  {"question": "Can I connect my personal phone to the corporate Wi-Fi?", "expected_source": "wifi_access.md"},
+
+  {"question": "How do I install a code editor on my work computer?", "expected_source": "software_request.md"},
+  {"question": "How long does it take to get approval for a paid application?", "expected_source": "software_request.md"},
+  {"question": "I'm a developer and need administrator rights temporarily", "expected_source": "software_request.md"},
+
+  {"question": "What do I need to bring on my first day to collect my laptop?", "expected_source": "new_joiner_access.md"},
+  {"question": "How do I get access to the finance tools my team uses?", "expected_source": "new_joiner_access.md"},
+  {"question": "When does a contractor's account get disabled?", "expected_source": "new_joiner_access.md"},
+
+  {"question": "My Windows laptop is asking for a 48-digit key after an update", "expected_source": "laptop_encryption.md"},
+  {"question": "Where can I find my disk encryption recovery key?", "expected_source": "laptop_encryption.md"},
+
+  {"question": "People in the meeting can't hear me on Teams", "expected_source": "teams_meetings.md"},
+  {"question": "My webcam shows a black screen during video calls", "expected_source": "teams_meetings.md"},
+  {"question": "The conference room screen isn't working", "expected_source": "teams_meetings.md"},
+
+  {"question": "I think I entered my password on a fake website from an email link", "expected_source": "phishing_reporting.md"},
+  {"question": "How do I report a suspicious email?", "expected_source": "phishing_reporting.md"},
+
+  {"question": "I spilled coffee on my laptop", "expected_source": "hardware_replacement.md"},
+  {"question": "When will my old laptop be replaced with a new one?", "expected_source": "hardware_replacement.md"},
+  {"question": "Can I get a second monitor for my desk?", "expected_source": "hardware_replacement.md"},
+
+  {"question": "How quickly will IT respond to a critical outage?", "expected_source": "ticket_priority_sla.md"},
+  {"question": "What are the opening hours of the IT walk-up desk?", "expected_source": "ticket_priority_sla.md"},
+  {"question": "My ticket is overdue and nobody has replied", "expected_source": "ticket_priority_sla.md"},
+
+  {"question": "What is the company's parental leave policy?", "expected_source": null},
+  {"question": "How do I submit my travel expense claim?", "expected_source": null},
+  {"question": "What is the capital of Australia?", "expected_source": null},
+  {"question": "Can you recommend a good restaurant near the office?", "expected_source": null},
+  {"question": "How do I configure a Kubernetes cluster autoscaler?", "expected_source": null}
+]
