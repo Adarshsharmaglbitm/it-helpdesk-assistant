@@ -4,6 +4,7 @@ Run with:  streamlit run app.py
 """
 
 import html
+import os
 import re
 import time
 import uuid
@@ -13,7 +14,16 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
-from src import config, media, store
+# On Streamlit Community Cloud the API keys live in the app's Secrets. Copy top-level ones into the
+# environment before src.config reads it, so the same code works with a local .env file.
+try:
+    for _key, _value in st.secrets.items():
+        if isinstance(_value, (str, int, float, bool)):
+            os.environ.setdefault(_key, str(_value))
+except Exception:  # no secrets.toml (e.g. running locally with .env)
+    pass
+
+from src import config, media, store  # noqa: E402
 from src.llm import describe
 from src.retrieval import MODES
 from src.utils import (
@@ -697,6 +707,11 @@ def chat_view():
                     last_paint = time.perf_counter()
         except Exception as e:
             answer = f"⚠️ The language model could not be reached: {e}"
+            if config.LLM_PROVIDER == "ollama":
+                answer += (
+                    f"\n\nThe app is set to use **Ollama** at `{config.OLLAMA_BASE_URL}`, which is not running here. "
+                    "On a cloud host, add `GROQ_API_KEY` (and `LLM_PROVIDER = \"groq\"`) to the app's secrets."
+                )
         answer = normalize_citations(answer)
         placeholder.markdown(answer)
         latency = time.perf_counter() - start
