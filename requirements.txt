@@ -6,7 +6,7 @@ langchain-openai>=0.2
 fastembed>=0.5
 faiss-cpu>=1.8
 rank-bm25>=0.2.2
-streamlit>=1.66
+streamlit==1.66.*
 python-dotenv>=1.0
 pypdf>=4.0
 pytest>=8.0

@@ -12,7 +12,6 @@ from datetime import datetime
 
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 from src import config, media, store
 from src.llm import describe
@@ -890,13 +889,14 @@ def insights_view():
 
 
 if theme := ss.pop("pending_theme", None):
-    components.html(
+    # theme is always "Dark" or "Light" (set above), never user input, so inlining it in the script is safe.
+    st.iframe(
         f"""<script>
         const p = window.parent;
         p.localStorage.setItem(`stActiveTheme-${{p.location.pathname}}-v2`, JSON.stringify("{theme}"));
         p.location.reload();
         </script>""",
-        height=0,
+        height=1,
     )
 
 {CHAT: chat_view, KB: kb_view, TICKETS: tickets_view, INSIGHTS: insights_view}[view]()
