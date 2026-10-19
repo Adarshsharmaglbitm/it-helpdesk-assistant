@@ -29,18 +29,33 @@ TOP_K = int(os.getenv("TOP_K", 4))
 RRF_K = int(os.getenv("RRF_K", 60))  # Reciprocal Rank Fusion constant
 
 # LLM provider: "ollama" (local, free), "groq" (free API tier), "openai", or "none" (retrieval only)
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+
+
+def _ollama_running(url: str) -> bool:
+    import socket
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    try:
+        with socket.create_connection((parsed.hostname or "localhost", parsed.port or 11434), timeout=0.3):
+            return True
+    except OSError:
+        return False
+
+
 def _default_provider() -> str:
     # Pick whichever provider has a key, so a cloud deploy with only GROQ_API_KEY set still works.
     if os.getenv("GROQ_API_KEY"):
         return "groq"
     if os.getenv("OPENAI_API_KEY"):
         return "openai"
-    return "ollama"
+    # No key: use a local Ollama if one is running, otherwise answer from retrieval only instead of erroring.
+    return "ollama" if _ollama_running(OLLAMA_BASE_URL) else "none"
 
 
 LLM_PROVIDER = (os.getenv("LLM_PROVIDER") or _default_provider()).lower()
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 # Only used by reasoning models such as openai/gpt-oss-*: "low", "medium" or "high"
 GROQ_REASONING_EFFORT = os.getenv("GROQ_REASONING_EFFORT", "low")

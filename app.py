@@ -18,8 +18,11 @@ import streamlit as st
 # environment before src.config reads it, so the same code works with a local .env file.
 try:
     for _key, _value in st.secrets.items():
-        if isinstance(_value, (str, int, float, bool)):
-            os.environ.setdefault(_key, str(_value))
+        # Also accept keys pasted under a heading such as [general] or [secrets].
+        _items = _value.items() if hasattr(_value, "items") else [(_key, _value)]
+        for _k, _v in _items:
+            if isinstance(_v, (str, int, float, bool)):
+                os.environ.setdefault(str(_k).strip().upper(), str(_v).strip())
 except Exception:  # no secrets.toml (e.g. running locally with .env)
     pass
 
@@ -290,7 +293,12 @@ def load_pipeline():
         from src.ingest import build_index
 
         build_index()
-    pipeline = RAGPipeline()
+    try:
+        pipeline = RAGPipeline()
+        pipeline.setup_error = None
+    except RuntimeError as e:  # e.g. LLM_PROVIDER=groq but GROQ_API_KEY missing: still answer from retrieval
+        pipeline = RAGPipeline(provider="none")
+        pipeline.setup_error = str(e)
     pipeline.retrieve("warm up")  # the first ONNX run is slow; pay it here instead of on the first question
     return pipeline
 
@@ -477,7 +485,18 @@ def render_assistant(msg: dict, is_last: bool) -> None:
 # ---- sidebar -----------------------------------------------------------------
 
 articles = load_articles()
-llm_on = config.LLM_PROVIDER != "none"
+
+try:
+    pipeline = load_pipeline()
+except FileNotFoundError as e:
+    st.error(f"{e}")
+    st.stop()
+except Exception as e:  # e.g. the search index could not be built
+    st.error(f"Could not start the assistant: {e}")
+    st.stop()
+
+llm_on = pipeline.llm is not None
+llm_label = describe() if llm_on else "none (retrieval only)"
 
 with st.sidebar:
     st.markdown(
@@ -510,7 +529,7 @@ with st.sidebar:
         )
 
     with st.expander("ℹ️ System"):
-        st.caption(f"**LLM:** {describe()}")
+        st.caption(f"**LLM:** {llm_label}")
         st.caption(f"**Embeddings:** {config.EMBEDDING_MODEL}")
         st.caption(f"**Knowledge base:** {len(articles)} articles")
         if st.button("Rebuild index", width="stretch"):
@@ -530,7 +549,7 @@ with st.sidebar:
 
 # ---- header ------------------------------------------------------------------
 
-status = f"Online · {describe()}" if llm_on else "Retrieval only · no LLM configured"
+status = f"Online · {llm_label}" if llm_on else "Retrieval only · no LLM configured"
 pill = f'<span class="hd-pill"><span class="hd-dot{"" if llm_on else " off"}"></span>{html.escape(status)}</span>'
 if ss.messages and ss.view == CHAT:
     st.markdown(f'<div class="hd-bar"><span class="t">🛠️ IT Helpdesk Assistant</span>{pill}</div>',
@@ -554,14 +573,14 @@ view = st.segmented_control(
     "View", VIEWS, key="view", on_change=keep_view_selected, label_visibility="collapsed"
 ) or CHAT
 
-try:
-    pipeline = load_pipeline()
-except FileNotFoundError as e:
-    st.error(f"{e}")
-    st.stop()
-except Exception as e:  # e.g. missing API key or Ollama not running
-    st.error(f"Could not start the assistant: {e}")
-    st.stop()
+if not llm_on:
+    st.warning(
+        "**No AI model is connected, so answers show the best matching knowledge base passage.**  \n"
+        + (f"{pipeline.setup_error}  \n" if pipeline.setup_error else "")
+        + "To fix it on Streamlit Cloud: open the app's **Settings → Secrets**, add "
+        '`GROQ_API_KEY = "gsk_..."` on its own line, save, and reboot the app.',
+        icon="⚠️",
+    )
 
 
 # ---- chat view ---------------------------------------------------------------
@@ -744,7 +763,7 @@ def chat_view():
         "top_article": sources[0]["title"] if sources and not fallback else None,
         "latency": round(latency, 2),
         "mode": mode,
-        "llm": describe(),
+        "llm": llm_label,
     })
     st.rerun()
 
