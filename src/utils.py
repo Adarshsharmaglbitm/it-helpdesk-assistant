@@ -54,6 +54,12 @@ def format_context(docs: Iterable) -> str:
 
 
 _CITATION_RE = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
+_FULLWIDTH_CITATION_RE = re.compile(r"【\s*(\d+)(?:\s*[,†][^】]*)?\s*】")
+
+
+def normalize_citations(answer: str) -> str:
+    """Some models (e.g. gpt-oss) cite as 【1】 or 【1†source】; rewrite those to the [1] style we parse."""
+    return _FULLWIDTH_CITATION_RE.sub(r"[\1]", answer)
 
 
 def extract_citations(answer: str, num_sources: int) -> list[int]:
@@ -74,3 +80,71 @@ def dedupe_preserve_order(items: Iterable[str]) -> list[str]:
             seen.add(item)
             out.append(item)
     return out
+
+
+# --- conversation helpers ------------------------------------------------------
+
+_GREETING_RE = re.compile(
+    r"^\s*(hi+|hello+|hey+|hiya|yo|good (morning|afternoon|evening)|greetings)\b[\s!.,?]*(there|team|bot)?[\s!.,?]*$",
+    re.IGNORECASE,
+)
+_THANKS_RE = re.compile(r"^\s*(thanks?|thank you|thx|ty|cheers|great|perfect|awesome|ok(ay)?|cool)\b[\w\s!.,]*$", re.IGNORECASE)
+_BYE_RE = re.compile(r"^\s*(bye|goodbye|see you|cya|that'?s all)\b[\w\s!.,]*$", re.IGNORECASE)
+
+
+def small_talk_reply(text: str) -> str | None:
+    """Return a canned reply for greetings, thanks and goodbyes, or None for a real question."""
+    if len(text) > 60:
+        return None
+    if _GREETING_RE.match(text):
+        return (
+            "Hi! 👋 I'm the IT Helpdesk Assistant. Describe your issue, for example "
+            "*\"my VPN won't connect\"* or *\"how do I set up MFA on a new phone?\"*, "
+            "and I'll find the answer in the IT knowledge base."
+        )
+    if _THANKS_RE.match(text):
+        return "You're welcome! Anything else I can help you with?"
+    if _BYE_RE.match(text):
+        return "Glad I could help. If the issue comes back, you can always raise a ticket from the **Tickets** tab. 👋"
+    return None
+
+
+def format_history(messages: Sequence[dict], max_turns: int = 3) -> str:
+    """Render the last few user/assistant turns as plain text for the follow-up rewriter."""
+    turns = [m for m in messages if m.get("role") in ("user", "assistant")][-max_turns * 2:]
+    lines = []
+    for m in turns:
+        content = _CITATION_RE.sub("", m["content"]).strip()
+        lines.append(f"{m['role'].capitalize()}: {content[:600]}")
+    return "\n".join(lines)
+
+
+_PRIORITY_KEYWORDS = [
+    ("P1 Critical", ("phishing", "hacked", "virus", "malware", "ransomware", "security", "breach",
+                     "company-wide", "everyone", "whole company", "all users", "outage")),
+    ("P2 High", ("team", "department", "whole floor", "cannot work", "can't work", "blocked")),
+    ("P4 Low", ("request", "install", "new software", "license", "licence", "how do i", "question",
+                "peripheral", "monitor", "keyboard", "mouse")),
+]
+PRIORITIES = ("P1 Critical", "P2 High", "P3 Medium", "P4 Low")
+
+
+def guess_priority(text: str) -> str:
+    """Suggest a ticket priority from the issue text, using the priority table in the SLA article."""
+    lowered = text.lower()
+    for priority, words in _PRIORITY_KEYWORDS:
+        if any(w in lowered for w in words):
+            return priority
+    return "P3 Medium"
+
+
+_FOLLOWUP_RE = re.compile(
+    r"\b(it|its|that|this|those|these|they|them|there|still|again|also|else|instead|same|"
+    r"didn'?t|doesn'?t|won'?t|isn'?t|other|another|next|more)\b|^\s*(and|but|what about|how about|ok|so)\b",
+    re.IGNORECASE,
+)
+
+
+def looks_like_followup(question: str) -> bool:
+    """Cheap check for questions that depend on earlier turns, so we only pay for an LLM rewrite when needed."""
+    return len(question.split()) <= 4 or bool(_FOLLOWUP_RE.search(question))

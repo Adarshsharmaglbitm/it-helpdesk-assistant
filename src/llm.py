@@ -27,11 +27,15 @@ def get_llm(provider: str | None = None):
         if not api_key:
             raise RuntimeError("Set GROQ_API_KEY in your .env file to use Groq.")
         # Groq exposes an OpenAI-compatible API.
+        extra = {}
+        if config.GROQ_MODEL.startswith("openai/gpt-oss") and config.GROQ_REASONING_EFFORT:
+            extra["reasoning_effort"] = config.GROQ_REASONING_EFFORT
         return ChatOpenAI(
             model=config.GROQ_MODEL,
             api_key=api_key,
             base_url="https://api.groq.com/openai/v1",
             temperature=config.TEMPERATURE,
+            **extra,
         )
 
     if provider == "openai":

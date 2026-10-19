@@ -9,7 +9,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from src import config
 from src.llm import get_llm
 from src.retrieval import HybridRetriever
-from src.utils import extract_citations, format_context
+from src.utils import extract_citations, format_context, normalize_citations
 
 FALLBACK_ANSWER = (
     "I couldn't find this in the IT knowledge base. "
@@ -34,12 +34,39 @@ PROMPT = ChatPromptTemplate.from_messages(
     [("system", SYSTEM_PROMPT), ("human", "{question}")]
 ).partial(fallback=FALLBACK_ANSWER)
 
+CONDENSE_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "Rewrite the user's latest message as a single standalone IT support question, "
+            "using the conversation only to fill in missing context (which device, app or error). "
+            "If it is already standalone, return it unchanged. Reply with the question only.",
+        ),
+        ("human", "Conversation:\n{history}\n\nLatest message: {question}"),
+    ]
+)
+
 
 class RAGPipeline:
     def __init__(self, provider: str | None = None, retriever: HybridRetriever | None = None):
         self.retriever = retriever or HybridRetriever()
         self.llm = get_llm(provider)
         self.chain = PROMPT | self.llm | StrOutputParser() if self.llm else None
+        self.condense_chain = CONDENSE_PROMPT | self.llm | StrOutputParser() if self.llm else None
+
+    def condense(self, question: str, history: str) -> str:
+        """Turn a follow-up like "what if that doesn't work?" into a standalone question for retrieval."""
+        if not history or self.condense_chain is None:
+            return question
+        try:
+            rewritten = self.condense_chain.invoke({"history": history, "question": question}).strip()
+        except Exception:  # never block an answer because the rewrite failed
+            return question
+        return rewritten.strip('"') or question
+
+    @staticmethod
+    def is_fallback(answer: str) -> bool:
+        return FALLBACK_ANSWER[:40] in answer
 
     def retrieve(self, question: str, k: int = config.TOP_K, mode: str = "hybrid") -> list[Document]:
         return self.retriever.retrieve(question, k=k, mode=mode)
@@ -60,7 +87,7 @@ class RAGPipeline:
     def answer(self, question: str, k: int = config.TOP_K, mode: str = "hybrid") -> dict:
         """Full question -> answer call. Returns the answer, all retrieved sources and the cited ones."""
         docs = self.retrieve(question, k=k, mode=mode)
-        text = "".join(self.stream(question, docs))
+        text = normalize_citations("".join(self.stream(question, docs)))
         cited = extract_citations(text, len(docs))
         return {
             "question": question,
@@ -82,6 +109,7 @@ class RAGPipeline:
 if __name__ == "__main__":
     import sys
 
+    sys.stdout.reconfigure(encoding="utf-8")  # LLM answers can contain characters cp1252 cannot print
     question = " ".join(sys.argv[1:]) or "How do I reset my password?"
     result = RAGPipeline().answer(question)
     print(f"Q: {question}\n\nA: {result['answer']}\n\nSources:")

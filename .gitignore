@@ -7,3 +7,5 @@ __pycache__/
 index/
 eval/llm_answers.json
 .DS_Store
+logs/
+.cache/

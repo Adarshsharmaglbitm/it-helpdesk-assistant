@@ -4,7 +4,7 @@ Usage:
     python -m src.ingest
 
 Steps: load .md files -> split by headings -> split long sections into overlapping
-chunks -> embed with a local sentence-transformer -> save a FAISS index, plus the
+chunks -> embed with a local sentence-transformer (ONNX via fastembed) -> save a FAISS index, plus the
 raw chunks as JSON for the BM25 keyword index.
 """
 
@@ -14,6 +14,7 @@ import time
 from pathlib import Path
 
 from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 
 from src import config
@@ -70,13 +71,32 @@ def split_documents(docs: list[Document]) -> list[Document]:
     return chunks
 
 
-def get_embeddings():
-    from langchain_huggingface import HuggingFaceEmbeddings
+class FastEmbeddings(Embeddings):
+    """Sentence-transformer embeddings run through ONNX (fastembed).
 
-    return HuggingFaceEmbeddings(
-        model_name=config.EMBEDDING_MODEL,
-        encode_kwargs={"normalize_embeddings": True},
-    )
+    Produces the same normalized vectors as sentence-transformers, but loads in about a second
+    instead of half a minute because it does not import PyTorch.
+    """
+
+    def __init__(self, model_name: str):
+        from fastembed import TextEmbedding
+
+        cache_dir = str(config.EMBED_CACHE_DIR)
+        try:
+            # Use the cached model without asking the Hub for updates, which can stall startup for 20s+.
+            self.model = TextEmbedding(model_name, cache_dir=cache_dir, local_files_only=True)
+        except Exception:  # not downloaded yet
+            self.model = TextEmbedding(model_name, cache_dir=cache_dir)
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return [v.tolist() for v in self.model.embed(texts)]
+
+    def embed_query(self, text: str) -> list[float]:
+        return next(iter(self.model.query_embed([text]))).tolist()
+
+
+def get_embeddings() -> Embeddings:
+    return FastEmbeddings(config.EMBEDDING_MODEL)
 
 
 def build_index() -> int:

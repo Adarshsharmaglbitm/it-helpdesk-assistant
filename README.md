@@ -12,7 +12,7 @@ pinned: false
 
 A chatbot that answers employee IT questions (VPN, passwords, MFA, Outlook, printers, BitLocker, phishing and more) using **Retrieval-Augmented Generation**. Every answer is grounded in an internal knowledge base and cites its sources. If the answer is not in the knowledge base, the bot says so instead of guessing.
 
-**Stack:** Python · LangChain · FAISS · BM25 · Sentence-Transformers · Ollama / Groq / OpenAI · Streamlit
+**Stack:** Python · LangChain · FAISS · BM25 · Sentence-Transformers (ONNX via fastembed) · Ollama / Groq / OpenAI · Streamlit
 
 ## Features
 
@@ -22,7 +22,14 @@ A chatbot that answers employee IT questions (VPN, passwords, MFA, Outlook, prin
 - **Hallucination guard**: out-of-scope questions get a fixed "not in the knowledge base" reply.
 - **Swappable LLM**: local Ollama (free), Groq (free API tier), OpenAI, or retrieval-only mode.
 - **Evaluation suite**: 48 labeled questions measure Hit@k and MRR for each retrieval mode, plus citation and refusal accuracy for the LLM.
-- **Streamlit chat UI** with streaming answers, source viewer, and retrieval settings.
+- **Streamlit app** with four views:
+  - **Chat**: streaming answers with citation badges, source cards, popular-topic shortcuts, 👍/👎 feedback and chat export.
+  - **Knowledge base**: search and read every article, or jump straight into a chat about it.
+  - **Tickets**: raise a ticket pre-filled from the conversation, with a suggested priority and SLA times (demo, saved locally).
+  - **Insights**: question volume, answer rate, response time, helpfulness, most asked topics and knowledge gaps.
+- **Follow-up questions**: the conversation is used to rewrite follow-ups like "what if that fails?" into a standalone question before searching.
+- **Voice, screenshots and files in the chat**: record a voice note (transcribed with Whisper on Groq), attach a screenshot of an error (read by a vision model), or attach a log, text file or PDF. Their content is used both to search the knowledge base and to answer.
+- **Small talk handling**: greetings and thanks get a friendly reply instead of a "not in the knowledge base" answer.
 
 ## Architecture
 
@@ -51,6 +58,7 @@ it-helpdesk-rag/
 │   ├── ingest.py         # load -> chunk -> embed -> save FAISS + chunks
 │   ├── retrieval.py      # dense, BM25 and hybrid (RRF) retrieval
 │   ├── llm.py            # Ollama / Groq / OpenAI factory
+│   ├── media.py          # voice transcription, screenshot reading, file text extraction
 │   ├── rag.py            # prompt + chain + citations
 │   ├── utils.py          # RRF, tokenizer, citation parsing
 │   └── metrics.py        # Hit@k, MRR
@@ -83,7 +91,7 @@ cp .env.example .env      # Windows: copy .env.example .env
 - **Ollama (free, local, default):** install from [ollama.com](https://ollama.com), then run `ollama pull llama3.2`.
 - **Groq (free API, fastest setup on a low-RAM laptop):** get a key at [console.groq.com](https://console.groq.com), then in `.env` set `LLM_PROVIDER=groq` and `GROQ_API_KEY=...`.
 
-**3. Build the index** (downloads the ~90 MB embedding model the first time)
+**3. Build the index** (downloads the ~90 MB embedding model the first time, into `.cache/`)
 
 ```bash
 python -m src.ingest
@@ -127,7 +135,6 @@ Drop `.md` files into `data/kb/` (use `#` for the title and `##` for sections), 
 
 ## Possible extensions
 
-- Conversation memory with follow-up question rewriting
 - Cross-encoder re-ranking (e.g. `cross-encoder/ms-marco-MiniLM-L-6-v2`)
 - PDF and Confluence/SharePoint loaders
 - A FastAPI endpoint and Docker image

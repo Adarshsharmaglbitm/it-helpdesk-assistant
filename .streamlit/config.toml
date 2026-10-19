@@ -1,5 +1,21 @@
 [theme]
 primaryColor = "#2563eb"
 
+[theme.light]
+primaryColor = "#2563eb"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f1f4f9"
+textColor = "#1f2937"
+
+[theme.dark]
+primaryColor = "#3b82f6"
+backgroundColor = "#0b1220"
+secondaryBackgroundColor = "#141d30"
+textColor = "#e5e7eb"
+
 [browser]
 gatherUsageStats = false
+
+[client]
+# "viewer" hides the Deploy/developer options but keeps Settings (including the theme picker) in the menu
+toolbarMode = "viewer"
