@@ -25,6 +25,7 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM
 EMBED_CACHE_DIR = Path(os.getenv("FASTEMBED_CACHE_PATH", ROOT_DIR / ".cache" / "fastembed"))
 
 # Retrieval
+RETRIEVAL_MODES = ("hybrid", "dense", "bm25")
 TOP_K = int(os.getenv("TOP_K", 4))
 RRF_K = int(os.getenv("RRF_K", 60))  # Reciprocal Rank Fusion constant
 
@@ -64,6 +65,17 @@ TEMPERATURE = float(os.getenv("TEMPERATURE", 0.0))
 
 # Local logs for the app's Insights and Tickets tabs (query log, answer feedback, demo tickets)
 LOG_DIR = Path(os.getenv("LOG_DIR", ROOT_DIR / "logs"))
+
+# Branding: who the assistant says built it
+BOT_NAME = os.getenv("BOT_NAME", "IT Helpdesk Assistant")
+FOUNDER_NAME = os.getenv("FOUNDER_NAME", "Adarsh Sharma")
+
+# Login. The built-in admin account comes from these settings (set them in .env or the app's secrets).
+# Users create their own accounts on the login page; those are saved, hashed, in logs/users.json.
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin").strip().lower()
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+ADMIN_DISPLAY_NAME = os.getenv("ADMIN_DISPLAY_NAME", FOUNDER_NAME)
+LOGIN_HOURS = float(os.getenv("LOGIN_HOURS", 12))  # how long a sign-in lasts before asking again
 
 # Chat attachments (voice notes and screenshots use Groq, so they need GROQ_API_KEY)
 STT_MODEL = os.getenv("STT_MODEL", "whisper-large-v3-turbo")

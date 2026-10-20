@@ -84,29 +84,161 @@ def dedupe_preserve_order(items: Iterable[str]) -> list[str]:
 
 # --- conversation helpers ------------------------------------------------------
 
+DEFAULT_BOT_NAME = "IT Helpdesk Assistant"
+DEFAULT_FOUNDER = "Adarsh Sharma"
+
 _GREETING_RE = re.compile(
-    r"^\s*(hi+|hello+|hey+|hiya|yo|good (morning|afternoon|evening)|greetings)\b[\s!.,?]*(there|team|bot)?[\s!.,?]*$",
-    re.IGNORECASE,
+    r"^(hi+|hello+|hey+|hiya|yo|howdy|namaste|hola|good (morning|afternoon|evening|day)|greetings)"
+    r"(\s+(there|team|bot|assistant|everyone|all|helpdesk))?$",
 )
-_THANKS_RE = re.compile(r"^\s*(thanks?|thank you|thx|ty|cheers|great|perfect|awesome|ok(ay)?|cool)\b[\w\s!.,]*$", re.IGNORECASE)
-_BYE_RE = re.compile(r"^\s*(bye|goodbye|see you|cya|that'?s all)\b[\w\s!.,]*$", re.IGNORECASE)
+_HOW_ARE_YOU_RE = re.compile(
+    r"^((hi+|hey+|hello+)[\s,]+)?(how are you|how r u|how are u|how'?s it going|how are things|how do you do|"
+    r"what'?s up|wh?assup|sup)(\s+(doing|today|there))*$"
+)
+# Whole-message thanks only: "ok but my VPN still fails" must reach the knowledge base, not get "You're welcome".
+_THANKS_WORDS = (r"(thanks?|thank\s*you|thankyou|thx|ty|cheers|great|perfect|awesome|ok(ay)?|cool|nice|got it|"
+                 r"understood|that (worked|helped|fixed it)|it (works|worked)( now)?|(all )?(sorted|solved|fixed))")
+_THANKS_TAIL = r"(\s+(so much|very much|a lot|a ton|again|man|mate|buddy|bro|team|for (the|your) help|now))*"
+_THANKS_RE = re.compile(rf"^{_THANKS_WORDS}{_THANKS_TAIL}([\s,]+{_THANKS_WORDS}{_THANKS_TAIL})?$")
+_BYE_RE = re.compile(
+    r"^(bye+|bye bye|goodbye|good night|see (you|ya)( later| soon)?|cya|later|"
+    r"that'?s all( for (now|today))?|nothing else|no(pe)?[\s,]+(thanks|thank you|that'?s all))$"
+)
+# "who made you?", "who is your founder", "who built this app", "founder of this bot"
+_ABOUT_YOU = r"(\byou\b|\bu\b|\byourself\b|\b(this|the)\s+(app|bot|assistant|chatbot|tool|website|site|project|helpdesk)\b)"
+_CREATOR_RE = re.compile(
+    rf"\bwho\b.*\b(made|make|created|create|built|build|developed|develop|founded|designed|programmed|owns|wrote|"
+    rf"invented|trained)\b.*{_ABOUT_YOU}"
+    r"|\b(your|ur)\s+(founder|co-?founder|creator|developer|maker|owner|author|father|ceo|boss)\b"
+    rf"|\b(founder|co-?founder|creator|developer|maker|owner|author)\s+(of|behind)\s+{_ABOUT_YOU}"
+    r"|^(who'?s|who is|who are)?\s*(the\s+)?(founder|creator|developer|owner|maker)s?$"
+)
+_IDENTITY_RE = re.compile(
+    r"^(who|what)\s+(are|r)\s+(you|u)$|\byour\s+name\b|^introduce\s+yourself$|^tell me about (yourself|you)$"
+    r"|^are you (a )?(bot|human|robot|ai|real)$"
+)
+_CAPABILITIES_RE = re.compile(r"^(help|menu|options|what can (you|u) do|what do you do|how can (you|u) help( me)?|"
+                              r"what can i ask( you)?|how does this work)$")
 
 
-def small_talk_reply(text: str) -> str | None:
-    """Return a canned reply for greetings, thanks and goodbyes, or None for a real question."""
-    if len(text) > 60:
+def _clean(text: str) -> str:
+    """Lowercase, straighten quotes and drop trailing punctuation/emoji, so 'Thanks!! 🙏' matches like 'thanks'."""
+    text = text.strip().lower().replace("’", "'")
+    text = re.sub(r"[\s!.,?;:~)(\-🙏👍😊🙂😀😃❤️♥]+$", "", text)
+    return re.sub(r"^[\s!.,?;:]+", "", text)
+
+
+def small_talk_reply(text: str, name: str = "", founder: str = DEFAULT_FOUNDER,
+                     bot: str = DEFAULT_BOT_NAME, model: str = "") -> str | None:
+    """Return a friendly canned reply for greetings, thanks, goodbyes and questions about the assistant itself
+    (who it is, who built it, what it can do), or None for a real IT question."""
+    if len(text) > 90:
         return None
-    if _GREETING_RE.match(text):
+    t = _clean(text)
+    first = name.split()[0] if name.strip() else ""
+    hi = f"Hi {first}! 👋" if first else "Hi! 👋"
+    powered = f" Under the hood I run on the **{model}** language model." if model else ""
+
+    if _CREATOR_RE.search(t):
         return (
-            "Hi! 👋 I'm the IT Helpdesk Assistant. Describe your issue, for example "
-            "*\"my VPN won't connect\"* or *\"how do I set up MFA on a new phone?\"*, "
-            "and I'll find the answer in the IT knowledge base."
+            f"I was created by **{founder}**, the founder of the {bot}. 🛠️ He built me so employees get fast, "
+            f"step-by-step IT answers from the company knowledge base, with a source for every step, and a "
+            f"pre-filled ticket when something needs a human.{powered}\n\nWhat can I help you fix today?"
         )
-    if _THANKS_RE.match(text):
-        return "You're welcome! Anything else I can help you with?"
-    if _BYE_RE.match(text):
-        return "Glad I could help. If the issue comes back, you can always raise a ticket from the **Tickets** tab. 👋"
+    if _IDENTITY_RE.search(t):
+        return (
+            f"I'm the **{bot}**, created by **{founder}**. I answer IT questions from the company knowledge base "
+            f"(VPN, passwords, MFA, Outlook, printers, BitLocker, phishing and more) and cite the article behind "
+            f"every step.{powered}\n\nTell me what's going on and I'll walk you through it."
+        )
+    if _CAPABILITIES_RE.match(t):
+        return (
+            "Here's what I can do for you:\n\n"
+            "- **Fix common IT issues** with cited, step-by-step answers (VPN, passwords, MFA, Outlook, Wi-Fi, "
+            "printers, BitLocker, Teams, slow laptops, software requests)\n"
+            "- **Read what you attach**: a screenshot of an error, a log file or a PDF, or a voice note\n"
+            "- **Remember the conversation**, so you can ask follow-ups like *\"what if that fails?\"*\n"
+            "- **Raise a ticket** pre-filled from our chat when you need a person\n\n"
+            "Pick an answer style below the chat (⚡ Quick, 🧭 Step-by-step or 📖 Detailed) to match how much "
+            "detail you want."
+        )
+    if _GREETING_RE.match(t):
+        return (
+            f"{hi} I'm the {bot}. Describe your issue, for example *\"my VPN won't connect\"* or "
+            "*\"how do I set up MFA on a new phone?\"*, and I'll find the answer in the IT knowledge base."
+        )
+    if _HOW_ARE_YOU_RE.match(t):
+        return (f"I'm doing great, thanks for asking{', ' + first if first else ''}! 😊 Ready when you are. "
+                "What IT issue can I help with?")
+    if _THANKS_RE.match(t):
+        return f"You're welcome{', ' + first if first else ''}! 🙌 Anything else I can help you with?"
+    if _BYE_RE.match(t):
+        return (f"Glad I could help{', ' + first if first else ''}. If the issue comes back, you can always "
+                "raise a ticket from the **Tickets** tab. 👋")
     return None
+
+
+# --- answer styles -----------------------------------------------------------------
+
+ANSWER_STYLES = {
+    "Quick": (
+        "⚡",
+        "Answer in 2 to 4 short bullet points or sentences with only the essential steps. No background.",
+    ),
+    "Step-by-step": (
+        "🧭",
+        "Start with one short sentence saying what is going on or what you'll do together. Then give numbered "
+        "steps, one action per step, with exact menu names and buttons in **bold**. If the passages give a next "
+        "step when this doesn't work (often raising a ticket), end with a short line starting 'If that doesn't work'.",
+    ),
+    "Detailed": (
+        "📖",
+        "Give a thorough answer: first briefly explain the likely cause, then numbered steps with exact menu names "
+        "and buttons in **bold**, then useful tips or common pitfalls from the passages, and finally when to raise "
+        "a ticket (and its priority, if the passages say).",
+    ),
+}
+DEFAULT_STYLE = "Step-by-step"
+
+
+def style_instructions(style: str) -> str:
+    return ANSWER_STYLES.get(style, ANSWER_STYLES[DEFAULT_STYLE])[1]
+
+
+def group_by_day(chats: Sequence[dict], today) -> list[tuple[str, list[dict]]]:
+    """Split chats (newest first, with an ISO 'updated' time) into Today / Yesterday / Previous 7 days / Older."""
+    from datetime import datetime
+
+    groups: dict[str, list[dict]] = {"Today": [], "Yesterday": [], "Previous 7 days": [], "Older": []}
+    for chat in chats:
+        try:
+            day = datetime.fromisoformat(chat.get("updated", "")).astimezone().date()
+        except ValueError:
+            day = today
+        age = (today - day).days
+        name = "Today" if age <= 0 else "Yesterday" if age == 1 else "Previous 7 days" if age < 7 else "Older"
+        groups[name].append(chat)
+    return [(name, items) for name, items in groups.items() if items]
+
+
+_MD_SPECIAL_RE = re.compile(r"([\\`*_{}\[\]()#+\-.!|~<>:$])")
+
+
+def escape_markdown(text: str) -> str:
+    """Show text literally in a Streamlit label (button labels are Markdown)."""
+    return _MD_SPECIAL_RE.sub(r"\\\1", text)
+
+
+def history_messages(messages: Sequence[dict], max_turns: int = 3, max_chars: int = 700) -> list[tuple[str, str]]:
+    """The last few turns as (role, text) pairs for the answering prompt. Citations are removed because the
+    passage numbers change every turn and would point the model at the wrong source."""
+    turns = [m for m in messages if m.get("role") in ("user", "assistant")][-max_turns * 2:]
+    out = []
+    for m in turns:
+        content = _CITATION_RE.sub("", m.get("content", "")).strip()
+        if content:
+            out.append(("human" if m["role"] == "user" else "ai", content[:max_chars]))
+    return out
 
 
 def format_history(messages: Sequence[dict], max_turns: int = 3) -> str:

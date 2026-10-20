@@ -1,21 +1,28 @@
 [theme]
 primaryColor = "#2563eb"
+# IBM Plex Sans for all text, IBM Plex Mono for code and IDs (falls back to the system font when offline)
+font = "IBM Plex Sans:https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap, sans-serif"
+codeFont = "IBM Plex Mono:https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap, monospace"
 
 [theme.light]
 primaryColor = "#2563eb"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f1f4f9"
-textColor = "#1f2937"
+backgroundColor = "#f5f7fb"
+secondaryBackgroundColor = "#eef1f6"
+textColor = "#0f172a"
 
 [theme.dark]
 primaryColor = "#3b82f6"
-backgroundColor = "#0b1220"
-secondaryBackgroundColor = "#141d30"
-textColor = "#e5e7eb"
+backgroundColor = "#0b0e16"
+secondaryBackgroundColor = "#161b27"
+textColor = "#e6e9ef"
 
 [browser]
 gatherUsageStats = false
 
 [client]
-# "viewer" hides the Deploy/developer options but keeps Settings (including the theme picker) in the menu
+# The app has its own top bar; Streamlit's toolbar stays (hidden with CSS) because the Theme menu drives its theme switch
 toolbarMode = "viewer"
+
+[runner]
+# The app never relies on Streamlit "magic" (bare expressions written to the page), so skip that pass.
+magicEnabled = false
