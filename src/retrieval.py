@@ -8,7 +8,7 @@ from rank_bm25 import BM25Okapi
 from src import config
 from src.utils import reciprocal_rank_fusion, tokenize
 
-MODES = ("hybrid", "dense", "bm25")
+MODES = config.RETRIEVAL_MODES
 
 
 class HybridRetriever:
